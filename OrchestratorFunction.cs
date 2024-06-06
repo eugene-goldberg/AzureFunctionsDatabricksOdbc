@@ -20,9 +20,19 @@ public static class OrchestratorFunction
         // Call InsertDataActivity
         await context.CallActivityAsync("InsertDataActivity", (connectionString, batchSize));
 
-        // Call GetDataActivity
-        var result = await context.CallActivityAsync<List<string>>("GetDataActivity", (connectionString, query));
+        // Fan-out to call GetDataActivity 20 times
+        var tasks = new List<Task<string>>();
+        for (int i = 0; i < 20; i++)
+        {
+            tasks.Add(context.CallActivityAsync<string>("GetDataActivity", (connectionString, query)));
+        }
 
-        return result;
+        // Fan-in to collect the results
+        var results = await Task.WhenAll(tasks);
+
+        // Combine the results into a single list
+        var finalResult = new List<string>(results);
+
+        return finalResult;
     }
 }
